@@ -7,9 +7,9 @@ import pytest
 from powerhours import store
 from powerhours.backtest import backtest, summarize
 from powerhours.features import build_features, hourly_matrix
-from powerhours.forecast import make_forecast, save_forecast, score_forecasts
+from powerhours.forecast import latest_forecast, make_forecast, save_forecast, score_forecasts
 
-from .conftest import synthetic_prices
+from .conftest import synthetic_exog, synthetic_prices
 
 
 def test_backtest_trains_only_on_the_past_and_scores_all_models(prices):
@@ -17,7 +17,8 @@ def test_backtest_trains_only_on_the_past_and_scores_all_models(prices):
     predictions = backtest(features, test_days=28, refit_every=7)
     summary = summarize(predictions)
 
-    assert set(summary.index) == {"naive_yesterday", "naive_last_week", "gbm"}
+    assert set(summary.index) == {"naive_yesterday", "naive_last_week", "gbm", "gbm_exog"}
+    assert summary.loc["naive_yesterday", "skill_vs_naive"] == 0
     assert (summary["days"] == 28).all()
     assert (summary["mae"] > 0).all()
     assert summary["window_hit_rate"].between(0, 1).all()
@@ -40,7 +41,8 @@ def test_forecast_save_and_score(tmp_path):
     # The first unknown day is 2025-05-01. Forecast made at 08:00 UTC on the day before = on time.
     on_time = datetime(2025, 4, 30, 8, 0, tzinfo=timezone.utc)
     forecast = make_forecast("DE-LU", root=tmp_path, now=on_time)
-    assert len(forecast) == 24 * 3
+    assert len(forecast) == 24 * 3  # gbm_exog is skipped: no solar/wind/load forecast stored
+    assert "gbm_exog" not in set(forecast["model"])
     assert forecast["before_auction"].all()
     assert forecast["ts_utc"].min() == next_day["ts_utc"].min()
 
@@ -56,3 +58,18 @@ def test_forecast_save_and_score(tmp_path):
     assert len(scored) == 72
     assert scored["before_auction"].all()
     assert scored["abs_error"].mean() < 30
+
+
+def test_exog_model_runs_once_forecasts_are_published(tmp_path):
+    prices = synthetic_prices(days=100)
+    store.upsert(prices, "price", "DE-LU", public=True, root=tmp_path)
+    first = make_forecast("DE-LU", root=tmp_path)
+    assert "gbm_exog" not in set(first["model"])
+    save_forecast(first, "DE-LU", root=tmp_path)
+
+    # Later the same morning the grid operators publish tomorrow's forecasts.
+    store.upsert(synthetic_exog(prices, extra_days=2), "exog", "de", public=True, root=tmp_path)
+    second = make_forecast("DE-LU", root=tmp_path)
+    assert "gbm_exog" in set(second["model"])
+    assert save_forecast(second, "DE-LU", root=tmp_path) == 24  # only the new model is added
+    assert set(latest_forecast("DE-LU", root=tmp_path)["model"]) == {"gbm_exog"}

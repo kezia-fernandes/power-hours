@@ -17,9 +17,8 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from powerhours import store
 from powerhours.config import DEFAULT_ZONE, ZONES
-from powerhours.features import build_features, hourly_matrix
+from powerhours.features import load_features
 from powerhours.models import MODELS
 from powerhours.window import window_regret
 
@@ -63,6 +62,7 @@ def summarize(predictions: pd.DataFrame, duration: int = 2) -> pd.DataFrame:
     """Score each model. Lower is better everywhere except `window_hit_rate`.
 
     mae, rmse        classic error metrics in EUR/MWh
+    skill_vs_naive   share of the naive_yesterday error that the model removes
     window_regret    average extra cost (EUR/MWh) of running a `duration`-hour load in
                      the window the forecast recommends instead of the truly cheapest one
     window_hit_rate  share of days on which the forecast picked the truly cheapest window
@@ -85,7 +85,11 @@ def summarize(predictions: pd.DataFrame, duration: int = 2) -> pd.DataFrame:
                 "days": len(regrets),
             }
         )
-    return pd.DataFrame(rows).set_index("model").sort_values("mae")
+    summary = pd.DataFrame(rows).set_index("model").sort_values("mae")
+    if "naive_yesterday" in summary.index:
+        # Skill: 0 = as good as the naive forecast, 0.25 = 25% lower error, negative = worse.
+        summary["skill_vs_naive"] = 1 - summary["mae"] / summary.loc["naive_yesterday", "mae"]
+    return summary
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -95,10 +99,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--duration", type=int, default=2, help="length of the load in hours")
     args = parser.parse_args(argv)
 
-    prices = store.read("price", args.zone)
-    if prices.empty:
-        raise SystemExit(f"No prices stored for {args.zone}. Run the backfill first.")
-    features = build_features(hourly_matrix(prices, ZONES[args.zone].timezone))
+    features = load_features(args.zone)
     summary = summarize(backtest(features, test_days=args.days), duration=args.duration)
     print(f"\nBacktest {args.zone}, last {args.days} days, {args.duration}-hour window\n")
     print(summary.round(3).to_string())

@@ -1,7 +1,15 @@
 import numpy as np
 import pandas as pd
 
-from powerhours.features import FEATURES, build_features, hourly_matrix
+from powerhours.features import (
+    EXOG_FEATURES,
+    FEATURES,
+    build_features,
+    exog_matrices,
+    hourly_matrix,
+)
+
+from .conftest import synthetic_exog
 
 TZ = "Europe/Berlin"
 
@@ -51,3 +59,23 @@ def test_lag_values_are_correct(prices):
     assert features.loc[(day, 13), "lag_1d"] == matrix.loc[day - pd.Timedelta(days=1), 13]
     assert features.loc[(day, 13), "lag_7d"] == matrix.loc[day - pd.Timedelta(days=7), 13]
     assert features.loc[(day, 13), "y"] == matrix.loc[day, 13]
+
+
+def test_exog_features_are_for_the_target_day_and_cover_tomorrow(prices):
+    matrix = hourly_matrix(prices, TZ)
+    exog = exog_matrices(synthetic_exog(prices, extra_days=1), TZ)
+    features = build_features(matrix, exog).set_index(["date", "hour"])
+
+    day = matrix.index[50]
+    assert features.loc[(day, 13), "solar_fc"] == exog["solar"].loc[day, 13]
+    expected = exog["load"].loc[day, 13] - exog["wind"].loc[day, 13] - exog["solar"].loc[day, 13]
+    assert features.loc[(day, 13), "residual_fc"] == expected
+
+    tomorrow = matrix.index.max() + pd.Timedelta(days=1)
+    assert not features.loc[tomorrow, EXOG_FEATURES].isna().any().any()
+
+
+def test_exog_features_are_nan_when_no_forecast_exists(prices):
+    features = build_features(hourly_matrix(prices, TZ))
+    assert features[EXOG_FEATURES].isna().all().all()
+    assert len(features) > 0  # rows are kept: missing forecasts must not delete history

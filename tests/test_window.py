@@ -24,3 +24,8 @@ def test_regret_is_zero_for_perfect_forecast_and_positive_for_wrong_one():
     assert window_regret(actual, actual, 2) == 0
     wrong = np.array([1, 1, 9, 9, 9, 9.0])  # recommends hours 0-1, which really cost 45
     assert window_regret(actual, wrong, 2) == pytest.approx(45 - 11)
+
+
+def test_best_window_largest():
+    share = [10, 20, 90, 95, 30, 5]
+    assert best_window(share, 2, largest=True) == 2
