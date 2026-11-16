@@ -299,7 +299,14 @@ else:
         "test_from": "Test from",
         "test_to": "Test to",
     }
-    st.dataframe(log[list(columns)].rename(columns=columns), hide_index=True)
+    shown_log = log[list(columns)].copy()
+    shown_log["run_at"] = shown_log["run_at"].str.slice(0, 10)
+    shown_log["mae"] = shown_log["mae"].round(1)
+    shown_log["window_regret"] = shown_log["window_regret"].round(1)
+    shown_log["skill_vs_naive"] = (100 * shown_log["skill_vs_naive"]).round(0).astype(int).astype(
+        str
+    ) + "%"
+    st.dataframe(shown_log.rename(columns=columns), hide_index=True)
 
 st.divider()
 st.caption(
