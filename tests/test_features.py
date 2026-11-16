@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from powerhours.features import (
     EXOG_FEATURES,
@@ -69,7 +70,8 @@ def test_exog_features_are_for_the_target_day_and_cover_tomorrow(prices):
     day = matrix.index[50]
     assert features.loc[(day, 13), "solar_fc"] == exog["solar"].loc[day, 13]
     expected = exog["load"].loc[day, 13] - exog["wind"].loc[day, 13] - exog["solar"].loc[day, 13]
-    assert features.loc[(day, 13), "residual_fc"] == expected
+    assert features.loc[(day, 13), "residual_fc"] == pytest.approx(expected)
+    assert set(exog) == {"solar", "wind", "load"}  # onshore + offshore are combined
 
     tomorrow = matrix.index.max() + pd.Timedelta(days=1)
     assert not features.loc[tomorrow, EXOG_FEATURES].isna().any().any()

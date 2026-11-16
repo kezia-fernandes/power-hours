@@ -46,8 +46,9 @@ POWER_SERIES = [
 ]
 
 # Day-ahead forecasts published by the grid operators, used as model inputs.
-# "load" is electricity demand.
-EXOG_TYPES = ["solar", "wind", "load"]
+# "load" is electricity demand. Wind comes as two separate forecasts (the combined
+# "wind" type of the API has no day-ahead history).
+EXOG_TYPES = ["solar", "wind_onshore", "wind_offshore", "load"]
 
 
 def data_dir() -> Path:

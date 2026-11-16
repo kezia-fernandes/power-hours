@@ -95,6 +95,7 @@ def ingest_exog(
     end: date,
     root=None,
     now: datetime | None = None,
+    kinds: list[str] | None = None,
 ) -> int:
     """Day-ahead forecasts of solar, wind and load, stored as `<type>_forecast`.
 
@@ -104,7 +105,7 @@ def ingest_exog(
     """
     now = pd.Timestamp(now or datetime.now(timezone.utc))
     total = 0
-    for kind in EXOG_TYPES:
+    for kind in kinds or EXOG_TYPES:
         for chunk_start, chunk_end in date_chunks(start, end, BACKFILL_CHUNK_DAYS):
             envelope = client.get(
                 "public_power_forecast",
@@ -141,6 +142,9 @@ def main(argv: list[str] | None = None) -> None:
         default=["prices"],
         help="which data to download (default: prices)",
     )
+    parser.add_argument(
+        "--exog-types", nargs="+", choices=EXOG_TYPES, help="limit exog to these types"
+    )
     args = parser.parse_args(argv)
 
     today = date.today()
@@ -160,7 +164,9 @@ def main(argv: list[str] | None = None) -> None:
         if "power" in args.what:
             ingest_power(client, zone.country, start, today)
         if "exog" in args.what:
-            ingest_exog(client, zone.country, start, today + timedelta(days=2))
+            ingest_exog(
+                client, zone.country, start, today + timedelta(days=2), kinds=args.exog_types
+            )
 
 
 if __name__ == "__main__":

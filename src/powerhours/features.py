@@ -91,11 +91,15 @@ def exog_matrices(exog: pd.DataFrame, timezone: str) -> dict[str, pd.DataFrame]:
     """Day x hour tables for the solar, wind and load forecasts (whichever exist)."""
     if exog.empty:
         return {}
-    return {
+    tables = {
         kind: to_matrix(exog, f"{kind}_forecast", timezone)
-        for kind in ("solar", "wind", "load")
+        for kind in ("solar", "wind_onshore", "wind_offshore", "load")
         if (exog["series"] == f"{kind}_forecast").any()
     }
+    # Total wind = onshore + offshore, on days where both forecasts exist.
+    if "wind_onshore" in tables and "wind_offshore" in tables:
+        tables["wind"] = (tables.pop("wind_onshore") + tables.pop("wind_offshore")).dropna()
+    return {kind: tables[kind] for kind in ("solar", "wind", "load") if kind in tables}
 
 
 def _long(table: pd.DataFrame, name: str) -> pd.DataFrame:

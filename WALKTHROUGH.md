@@ -76,35 +76,61 @@ con.sql("SELECT key, min(ts_utc), max(ts_utc), count(*) FROM price GROUP BY key"
 
 ## 5. `features.py`: the most important file
 
-Read the comment at the top twice. The rule is: **features for a day may only use
-earlier days.** Breaking this rule is called *data leakage* and it is the most common
-way forecasting projects fool themselves.
+Read the comment at the top twice. There are two groups of features.
 
-The code reshapes prices into a table of days (rows) by hours (columns). Then
-`m.shift(1)` means "yesterday's row", `m.shift(7)` means "same weekday last week".
-
+**Group 1: past prices and the calendar (`BASE_FEATURES`).** The rule is: features for
+a day may only use *earlier* days. Breaking this rule is called *data leakage* and it is
+the most common way forecasting projects fool themselves. The code reshapes prices into
+a table of days (rows) by hours (columns). Then `m.shift(1)` means "yesterday's row",
+`m.shift(7)` means "same weekday last week".
 `tests/test_features.py::test_no_leakage_from_target_day` proves the rule holds: it
 changes one day's prices to 9999 and checks that this day's own features do not move.
 
+**Group 2: forecasts of solar, wind and demand for the target day (`EXOG_FEATURES`).**
+Prices are low when there is a lot of wind and sun and little demand. The grid operators
+publish forecasts of all three, one day ahead. Using a *forecast* of tomorrow is not
+leakage, because it exists before tomorrow happens. The key derived feature is
+**residual load** = demand − wind − solar: the electricity that conventional power
+plants still have to produce. The higher it is, the more expensive plants are needed.
+
+**The open question you must be able to discuss.** Is tomorrow's forecast already
+published when the morning job runs? The history from the API cannot tell you: it shows
+the forecast, not when it appeared. If the forecast only appears in the afternoon, then
+a backtest that uses it is too optimistic, because in real life the model would not
+have had it. Two things are in place for this:
+
+1. The daily job runs twice each morning. If the forecasts are missing, the model that
+   needs them (`gbm_exog`) is skipped and the simpler model (`gbm`) is used.
+2. The `exog_seen` dataset records the moment each forecast value was first seen by
+   your job. After a few weeks you can answer the question with your own evidence.
+   (Rows from the history download all carry the download date; only rows from daily
+   runs are informative.)
+
 **Check yourself**
-- On the last Sunday of March the day has 23 hours. What does `hourly_matrix` do about it?
+- On the last Sunday of March the day has 23 hours. What does `to_matrix` do about it?
 - Why is `lag_7d` a useful feature at all?
-- Which obvious information about tomorrow is *not* used yet? (Hint: what makes power cheap?)
+- Explain residual load to a friend in two sentences.
+- Why would a backtest be "too optimistic" if the forecasts are published after noon?
+- Query `exog_seen` after two weeks: on how many mornings was tomorrow's forecast there in time?
 
 ## 6. `models.py`: baselines first
 
-Three models with the same interface:
+Four models with the same interface:
 
 - `naive_yesterday`: tomorrow at 14:00 = today at 14:00.
 - `naive_last_week`: tomorrow at 14:00 = same weekday last week at 14:00.
-- `gbm`: gradient-boosted trees on all features, untuned.
+- `gbm`: gradient-boosted trees on past prices and calendar, untuned.
+- `gbm_exog`: the same, plus the solar, wind and demand forecasts.
 
 A model only means something relative to a baseline. "MAE of 12" says nothing. "25%
-better than the naive forecast" says a lot.
+better than the naive forecast" says a lot. That is the `skill_vs_naive` column.
+
+To try an idea of your own, add one line to `MODELS`. Everything else picks it up.
 
 **Check yourself**
 - In plain words, how does gradient boosting build its prediction?
 - The model uses `loss="absolute_error"`. What would change with squared error, and which price hours would it care more about?
+- Why does `fit` drop features that have no values at all?
 
 ## 7. `backtest.py`: honest evaluation
 
@@ -118,37 +144,85 @@ to a date, predict the next 7 days, move on, retrain, repeat.
 
 ## 8. `window.py`: your own metric
 
-`best_window` finds the cheapest block of N hours. `window_regret` asks: if I trust the
-forecast, how much more do I pay than someone who knew the future?
+`best_window` finds the cheapest block of N hours (or, with `largest=True`, the block
+with the highest value, used for the greenest hours). `window_regret` asks: if I trust
+the forecast, how much more do I pay than someone who knew the future?
 
 This is the part of the project that is most *yours*: a metric designed for the question
 instead of a default one. Expect to be asked about it.
 
 **Check yourself**
 - Construct by hand a forecast with a large MAE but zero regret.
-- Is a regret of 1.3 EUR/MWh a lot? Convert it to cents for one 1 kWh wash. (Then think about whether that changes how you tell the story.)
+- Is a regret of 9 EUR/MWh a lot? Convert it to cents for one 1 kWh wash. (Then think about whether that changes how you tell the story.)
 
-## 9. `forecast.py`: the daily job
+## 9. `experiment.py`: the lab notebook
 
-Makes tomorrow's forecast with every model and saves it. Two safeguards keep the track
-record honest:
+`python -m powerhours.experiment run --name "..." --notes "..."` backtests every model
+and appends the scores to `experiments/log.jsonl`, with the date, the git commit and the
+feature list. You can also start it from GitHub (Actions tab, "Run experiment").
 
-- A saved forecast is never overwritten.
+The log is the honest history of the project. Do not delete runs that went badly.
+
+**Check yourself**
+- Why is the git commit stored with every run?
+- If you try 30 ideas and report the best one, why might its score be too good? What would protect you? (Hint: a final test period you only touch once.)
+
+## 10. `green.py`: cheap versus green
+
+"Green" is measured as the renewable share of load: the percentage of the electricity
+being used that renewables are covering in that hour. `cheap_vs_green` finds, for every
+day, the cheapest window and the greenest window and compares them.
+`price_by_share_bucket` shows the average price for each band of renewable share.
+
+**Check yourself**
+- The share can be above 100%. What is happening physically in such an hour?
+- On a day when cheapest and greenest differ, what might be the reason?
+
+## 11. `forecast.py`: the daily job
+
+Makes tomorrow's forecast with every model that can run and saves it. Safeguards that
+keep the track record honest:
+
+- A saved forecast is never overwritten (`store.insert_new`: first write wins).
 - Each row records `made_at_utc` and `before_auction`. Late forecasts are stored but excluded from the score.
+- `latest_forecast` shows `gbm_exog` if it ran, otherwise `gbm`.
 
 **Check yourself**
 - Why is it tempting, and wrong, to regenerate old forecasts after improving the model?
 
-## 10. `.github/workflows/`: automation
+## 12. `briefing.py`: using an LLM responsibly
+
+Read the comment at the top of the file. The design in one sentence: **the code computes,
+the LLM only phrases, and a check verifies.**
+
+- `build_facts` produces a small dictionary of numbers. This is all the LLM sees.
+- `call_claude` sends the facts with strict instructions.
+- `check_grounding` pulls every number out of the answer and rejects the text if a
+  number is not among the facts, or the cheapest start time is missing.
+- If anything fails, `template_briefing` is used. The daily job cannot break because of the LLM.
+- Every attempt is logged with its facts and check result in `data/public/briefing/`.
+
+Know the limits: the check catches invented numbers. It does not catch a sentence that
+puts a correct number in the wrong place ("the *most expensive* time is 03:00").
+
+**Check yourself**
+- Why not just give the LLM the raw price table and ask "when should I wash"?
+- Think of a wrong briefing that would pass the check. How could you catch it?
+- After a month: what share of LLM texts passed? Read the rejected ones. What went wrong?
+
+## 13. `.github/workflows/`: automation
 
 - `ci.yml` runs the linter and the tests on every push. A green tick on the repository shows the code works.
-- `daily.yml` runs every morning: download, forecast, commit the new data.
+- `daily.yml` runs twice every morning: download, forecast, briefing, commit.
+- `backfill.yml` downloads history. You start it by hand; it has already been run.
+- `experiment.yml` runs a logged backtest. You start it by hand.
 
 **Check yourself**
 - What does `permissions: contents: write` allow, and why is it needed?
 - What happens if the API is down one morning? What is lost, and what is recovered the next day?
+- Why are there two runs each morning?
 
-## 11. `tests/`
+## 14. `tests/`
 
 Tests use synthetic prices (`tests/conftest.py`), so they need no internet and always
 give the same result. Run `pytest -v` and read the test names: they are a list of

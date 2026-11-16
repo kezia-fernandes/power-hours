@@ -36,6 +36,11 @@ def synthetic_exog(prices: pd.DataFrame, extra_days: int = 1, seed: int = 1) -> 
     load = 50000 + 8000 * np.sin((hour - 8) / 24 * 2 * np.pi)
     parts = [
         pd.DataFrame({"ts_utc": ts, "series": f"{name}_forecast", "value": values})
-        for name, values in [("solar", solar), ("wind", wind), ("load", load)]
+        for name, values in [
+            ("solar", solar),
+            ("wind_onshore", wind * 0.8),
+            ("wind_offshore", wind * 0.2),
+            ("load", load),
+        ]
     ]
     return pd.concat(parts, ignore_index=True)
