@@ -232,9 +232,13 @@ promises the code makes.
 
 ## What has and has not been verified
 
-- All 21 tests pass, and the full pipeline ran end to end on synthetic data.
-- The parser was checked against a shortened copy of a real API response (in
-  `tests/fixtures/`). The licence text in that file is a stand-in; the real wording comes
-  from the API, and the code only looks for "CC BY" in it.
-- Run against the live API on 2026-11-16 through GitHub Actions: the history download,
-  the backtest and the first daily forecast all succeeded.
+- All tests pass, including one that runs the whole dashboard.
+- Run against the live API on 2026-11-16 through GitHub Actions: history download,
+  daily job, forecast and experiment all succeeded on real data.
+- **Not verified:** the LLM call in `briefing.py` has never run against the real API
+  (no key was available). The logic around it is tested with a stand-in. The first run
+  after you add the key is the real test; if it fails, the job falls back to the template
+  and the log line says why.
+- **Not verified:** whether tomorrow's solar, wind and demand forecasts are published
+  before the morning runs. See section 5 and roadmap step 3.
+- **Not verified:** deployment on Streamlit Community Cloud.
