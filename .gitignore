@@ -1,0 +1,9 @@
+# Data with a restricted licence (e.g. Norwegian prices) must never be committed.
+data/private/
+
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.DS_Store

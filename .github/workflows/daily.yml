@@ -1,0 +1,32 @@
+name: Daily forecast
+on:
+  schedule:
+    # 07:10 UTC = 08:10 (winter) / 09:10 (summer) in Germany.
+    # This is before the day-ahead auction results appear (~13:00), so the
+    # forecast for tomorrow is a real forecast.
+    - cron: "10 7 * * *"
+  workflow_dispatch: # lets you start it by hand from the Actions tab
+
+permissions:
+  contents: write # needed to commit the new data back to the repository
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      # Only Germany runs here: its prices are CC BY 4.0 and may be published.
+      - run: python -m powerhours.ingest update --zone DE-LU
+      - run: python -m powerhours.forecast --zone DE-LU
+      - name: Commit new data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/public
+          git diff --cached --quiet || git commit -m "Daily data and forecast $(date -u +%F)"
+          git push
