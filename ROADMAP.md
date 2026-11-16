@@ -5,12 +5,15 @@ steps in order. After each one, write a few lines in `LEARNING_LOG.md`.
 
 ## Step 0: get it running (this week, about 2 hours)
 
-- [ ] Create a GitHub repository, put this folder in it, push.
+- [x] Create a GitHub repository, put this folder in it, push. (done 2026-11-16)
+- [ ] Clone the repository to your computer (`git clone`), so you work on the same copy.
 - [ ] Set up Python and run the commands in the README. All tests should pass.
-- [ ] Run the backfill for Germany from 2024-01-01. Check that files appear in `data/public/`.
+- [x] Backfill for Germany from 2024-01-01 (done on GitHub via the "Backfill history"
+      workflow; the data is in `data/public/`, so you do not need to download it again).
 - [ ] Run the backfill for Norway (`--zone NO2`, or the zone where your aunt lives).
       Check that it lands in `data/private/` and that `git status` does not show it.
-- [ ] On GitHub: Actions tab, run "Daily forecast" by hand once. Check that it commits.
+- [x] Run "Daily forecast" by hand once (done; it now runs by itself every morning).
+- [ ] Check the Actions tab after a few days: is there a green run for every morning?
 - [ ] Choose a licence for your code (MIT is the usual choice) and add a `LICENSE` file.
 
 From this day on the forecast history grows by itself. The earlier you do step 0, the

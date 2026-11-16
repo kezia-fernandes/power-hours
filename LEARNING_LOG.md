@@ -11,7 +11,8 @@ a project; the Norway comparison and the washing-machine question are my angle o
 
 **Built today (with Claude, in one session).** Project skeleton: API client, storage,
 features, two naive baselines plus gradient boosting, walk-forward backtest, daily
-forecast job, tests, CI, dashboard skeleton. Tested on synthetic data only so far.
+forecast job, tests, CI, dashboard skeleton. The history download (German prices since
+2024-01-01) and the first daily forecast ran successfully on GitHub Actions.
 
 **Decisions made today and why.**
 
@@ -27,9 +28,22 @@ forecast job, tests, CI, dashboard skeleton. Tested on synthetic data only so fa
 the Norwegian prices from the same API are restricted to private use. The code now
 separates public and private data automatically, and Norwegian data stays out of the repository.
 
+**First real backtest (last 90 days, Germany, 2-hour window).**
+
+| model | MAE (EUR/MWh) | RMSE | window regret | hit rate |
+|---|---|---|---|---|
+| naive_yesterday | 44.9 | 63.8 | 10.0 | 36% |
+| gbm (untuned) | 45.1 | 59.4 | 8.9 | 32% |
+| naive_last_week | 67.5 | 91.7 | 9.3 | 32% |
+
+The untuned model does not beat "same as yesterday" on MAE. It is slightly better on
+RMSE and window regret. This is the baseline to beat.
+
+**Data note.** Prices are hourly until October 2025 and every 15 minutes after that.
+
 **Open questions.**
 
-- Does the first real backfill work? (Not yet tested against the live API.)
+- Why is the untuned model no better than "same as yesterday"? What is it missing?
 - Which Norwegian zone does my aunt live in?
 - How will I present the Norway comparison publicly, given the licence?
 

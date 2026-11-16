@@ -162,5 +162,5 @@ promises the code makes.
 - The parser was checked against a shortened copy of a real API response (in
   `tests/fixtures/`). The licence text in that file is a stand-in; the real wording comes
   from the API, and the code only looks for "CC BY" in it.
-- **Not yet run against the live API from start to finish.** Your first backfill is that
-  test. If it fails, the error message and `client.py` are where to look.
+- Run against the live API on 2026-11-16 through GitHub Actions: the history download,
+  the backtest and the first daily forecast all succeeded.
