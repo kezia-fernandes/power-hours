@@ -35,6 +35,20 @@ ZONES: dict[str, Zone] = {
 
 DEFAULT_ZONE = "DE-LU"
 
+# Series we keep from the generation data (the API returns about 20).
+POWER_SERIES = [
+    "solar",
+    "wind_onshore",
+    "wind_offshore",
+    "load",
+    "residual_load",
+    "renewable_share_of_load",
+]
+
+# Day-ahead forecasts published by the grid operators, used as model inputs.
+# "load" is electricity demand.
+EXOG_TYPES = ["solar", "wind", "load"]
+
 
 def data_dir() -> Path:
     """Root of the data folder. Override with the POWERHOURS_DATA environment variable."""

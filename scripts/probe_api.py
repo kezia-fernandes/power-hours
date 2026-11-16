@@ -10,21 +10,63 @@ BASE = "https://api.energy-charts.info/v2/"
 CALLS = [
     ("price", {"bzn": "DE-LU", "start": "2026-11-17", "end": "2026-11-17"}),
     ("public_power", {"country": "de", "start": "2026-11-15", "end": "2026-11-15"}),
-    ("public_power_forecast", {"country": "de", "production_type": "solar",
-                               "forecast_type": "day-ahead", "start": "2024-06-01", "end": "2024-06-02"}),
+    (
+        "public_power_forecast",
+        {
+            "country": "de",
+            "production_type": "solar",
+            "forecast_type": "day-ahead",
+            "start": "2024-06-01",
+            "end": "2024-06-02",
+        },
+    ),
     ("ren_share_forecast", {"country": "de"}),
     ("signal", {"country": "de"}),
     ("public_power", {"country": "de", "start": "2024-01-01", "end": "2024-01-01"}),
-    ("public_power_forecast", {"country": "de", "production_type": "load",
-                               "forecast_type": "day-ahead", "start": "2024-06-01", "end": "2024-06-02"}),
-    ("public_power_forecast", {"country": "de", "production_type": "wind_onshore",
-                               "forecast_type": "current"}),
-    ("public_power_forecast", {"country": "de", "production_type": "wind_offshore",
-                               "forecast_type": "day-ahead", "start": "2026-11-16", "end": "2026-11-18"}),
-    ("public_power_forecast", {"country": "de", "production_type": "solar",
-                               "forecast_type": "intraday", "start": "2026-11-16", "end": "2026-11-18"}),
-    ("public_power_forecast", {"country": "de", "production_type": "load",
-                               "forecast_type": "day-ahead", "start": "2026-11-16", "end": "2026-11-18"}),
+    (
+        "public_power_forecast",
+        {
+            "country": "de",
+            "production_type": "load",
+            "forecast_type": "day-ahead",
+            "start": "2024-06-01",
+            "end": "2024-06-02",
+        },
+    ),
+    (
+        "public_power_forecast",
+        {"country": "de", "production_type": "wind_onshore", "forecast_type": "current"},
+    ),
+    (
+        "public_power_forecast",
+        {
+            "country": "de",
+            "production_type": "wind_offshore",
+            "forecast_type": "day-ahead",
+            "start": "2026-11-16",
+            "end": "2026-11-18",
+        },
+    ),
+    (
+        "public_power_forecast",
+        {
+            "country": "de",
+            "production_type": "solar",
+            "forecast_type": "intraday",
+            "start": "2026-11-16",
+            "end": "2026-11-18",
+        },
+    ),
+    (
+        "public_power_forecast",
+        {
+            "country": "de",
+            "production_type": "load",
+            "forecast_type": "day-ahead",
+            "start": "2026-11-16",
+            "end": "2026-11-18",
+        },
+    ),
     ("public_power", {"country": "no", "start": "2026-11-15", "end": "2026-11-15"}),
 ]
 last = {}

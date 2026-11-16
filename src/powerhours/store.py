@@ -23,6 +23,8 @@ from powerhours.config import data_dir
 KEY_COLUMNS = {
     "price": ["ts_utc", "series"],
     "power": ["ts_utc", "series"],
+    "exog": ["ts_utc", "series"],
+    "exog_seen": ["ts_utc", "series"],
     "forecast": ["ts_utc", "model"],
 }
 
@@ -55,6 +57,22 @@ def upsert(
     return len(frame)
 
 
+def insert_new(
+    frame: pd.DataFrame, dataset: str, key: str, public: bool, root: Path | None = None
+) -> int:
+    """Like `upsert`, but rows that already exist are left untouched ("first write wins").
+
+    Used for anything that must not be rewritten with hindsight, such as saved forecasts.
+    """
+    existing = read(dataset, key, root=root)
+    if not existing.empty and not frame.empty:
+        keys = KEY_COLUMNS[dataset]
+        seen = set(existing[keys].itertuples(index=False, name=None))
+        is_new = [row not in seen for row in frame[keys].itertuples(index=False, name=None)]
+        frame = frame[is_new]
+    return upsert(frame, dataset, key, public, root)
+
+
 def read(dataset: str, key: str, root: Path | None = None) -> pd.DataFrame:
     """Read everything stored for one dataset/key (public and private) as a DataFrame."""
     files = [
@@ -70,7 +88,7 @@ def read(dataset: str, key: str, root: Path | None = None) -> pd.DataFrame:
 
 
 def connect(root: Path | None = None) -> duckdb.DuckDBPyConnection:
-    """In-memory DuckDB with one view per dataset (`price`, `power`, `forecast`).
+    """In-memory DuckDB with one view per dataset (`price`, `power`, `exog`, `forecast`, ...).
 
     Each view has a `key` column (the zone or country), taken from the folder name.
     Example:

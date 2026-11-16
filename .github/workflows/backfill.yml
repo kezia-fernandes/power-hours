@@ -1,12 +1,15 @@
 name: Backfill history
-# Run by hand once (Actions tab -> Backfill history -> Run workflow) to download
-# the price history for Germany. Safe to run again: existing rows are not duplicated.
+# Run by hand (Actions tab -> Backfill history -> Run workflow) to download history
+# for Germany. Safe to run again: existing rows are not duplicated.
 on:
   workflow_dispatch:
     inputs:
       start:
         description: "First day to download (YYYY-MM-DD)"
         default: "2024-01-01"
+      what:
+        description: "What to download: any of prices power exog"
+        default: "prices power exog"
 
 permissions:
   contents: write
@@ -14,7 +17,7 @@ permissions:
 jobs:
   backfill:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,16 +25,18 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -e .
-      - run: python -m powerhours.ingest backfill --zone DE-LU --start "$START"
+      - run: python -m powerhours.ingest backfill --zone DE-LU --start "$START" --what $WHAT
         env:
           START: ${{ inputs.start }}
-      - run: python -m powerhours.backtest --zone DE-LU --days 90
+          WHAT: ${{ inputs.what }}
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/public
-          git diff --cached --quiet || git commit -m "Backfill German prices from $START"
+          git diff --cached --quiet || git commit -m "Backfill $WHAT from $START"
+          git pull --rebase
           git push
         env:
           START: ${{ inputs.start }}
+          WHAT: ${{ inputs.what }}

@@ -69,13 +69,7 @@ def make_forecast(zone: str, root=None, now: datetime | None = None) -> pd.DataF
 
 def save_forecast(forecast: pd.DataFrame, zone: str, root=None) -> int:
     """Store a forecast, but never replace an earlier forecast for the same hour."""
-    existing = store.read("forecast", zone, root=root)
-    if not existing.empty:
-        seen = set(zip(existing["ts_utc"], existing["model"], strict=True))
-        keys = zip(forecast["ts_utc"], forecast["model"], strict=True)
-        is_new = [key not in seen for key in keys]
-        forecast = forecast[is_new]
-    return store.upsert(forecast, "forecast", zone, public=True, root=root)
+    return store.insert_new(forecast, "forecast", zone, public=True, root=root)
 
 
 def score_forecasts(zone: str, root=None) -> pd.DataFrame:
