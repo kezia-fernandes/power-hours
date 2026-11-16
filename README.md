@@ -16,7 +16,9 @@ This project:
 5. writes a short daily briefing with an LLM and checks every number in it automatically,
 6. compares the daily price pattern in Germany with Norway.
 
-<!-- TODO (you): add a screenshot of the dashboard and the link to the live app here. -->
+![Dashboard](docs/dashboard.png)
+
+<!-- TODO (you): add the link to the live app here once it is deployed. -->
 
 ## Results
 
